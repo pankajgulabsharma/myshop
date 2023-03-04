@@ -1,4 +1,5 @@
-const Category = require("../models/categoriesModel.js");
+const mongoose = require("mongoose");
+const Category = require("../models/categoryModel.js");
 
 //Getting all Category
 exports.getAllCategories = async (req, res, next) => {
@@ -52,6 +53,12 @@ exports.createCategory = async (req, res, next) => {
 //Deleting Catergory based on Id
 exports.deleteCategoryById = async (req, res, next) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid Catergory Id ${req.params.categoryId} found`,
+      });
+    }
     let category = await Category.findByIdAndDelete(req.params.categoryId);
     if (!category) {
       return res.status(404).json({

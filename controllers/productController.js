@@ -1,5 +1,5 @@
 const Product = require("../models/productModel.js");
-const Category = require("../models/categoriesModel.js");
+const Category = require("../models/categoryModel.js");
 const mongoose = require("mongoose");
 
 //Create the Product
@@ -18,6 +18,7 @@ exports.createProduct = async (req, res, next) => {
       isFeatured,
       category,
     } = req.body;
+    let user = req.user.id; //this action is perfomed when the user is login so we get login id from there (req.user getting is through authentication)
     const isCategoryFound = await Category.findById(category);
     if (!isCategoryFound) {
       return res.status(404).json({
@@ -37,6 +38,7 @@ exports.createProduct = async (req, res, next) => {
       price,
       isFeatured,
       category,
+      user,
     });
 
     if (product) {
@@ -99,10 +101,13 @@ exports.getProductById = async (req, res, next) => {
     // exclude c and d, include other fields
     //e.g2. query.select('-c -d');     here query is await Product.findById(req.params.productId)
 
+    // include passowrd with data given by query
+    //e.g2. query.select('+password');     here query is await User.findById(req.params.userId)
+
     //[2] populate("fieldName that you have defined in model")   it is used to populate ref data
 
     const product = await Product.findById(req.params.productId).populate(
-      "category"
+      "category user"
     );
 
     if (!product) {

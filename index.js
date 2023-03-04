@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 /*CONFIGURATION*/
 require("dotenv").config();
@@ -17,6 +18,8 @@ app.use(bodyParser.json());
 //cors
 app.use(cors());
 app.options("*", cors()); //anyone can access
+//cookie-parser
+app.use(cookieParser());
 
 /* MONGOOSE SETUP*/
 const PORT = process.env.PORT || 9000;
@@ -34,11 +37,13 @@ mongoose
 const productRoutes = require("./routes/product.js");
 const categoryRoutes = require("./routes/categories.js");
 const userRouters = require("./routes/user.js");
+const orderRouters = require("./routes/orders.js");
 
 /*USING ROUTES*/
 app.use(`${process.env.API_URL}/product`, productRoutes);
 app.use(`${process.env.API_URL}/category`, categoryRoutes);
 app.use(`${process.env.API_URL}/user`, userRouters);
+app.use(`${process.env.API_URL}/order`, orderRouters);
 
 // app.get("/", (req, res) => {
 //   res.send("HI PANKAJ");

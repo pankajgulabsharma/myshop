@@ -51,9 +51,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  isAdmin: {
-    type: Boolean,
-    default: false,
+  // isAdmin: {
+  //   type: Boolean,
+  //   default: false,
+  // },
+  role: {
+    type: String,
+    default: "user",
   },
   createdAt: {
     type: Date,
@@ -61,13 +65,44 @@ const userSchema = new mongoose.Schema({
   },
 });
 
-//before saving password
+//before saving password   but not work when you try update functionality for that we follow findOneAndUpdate event
+//which we get below of this event
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     next();
   }
   this.password = await bcrypt.hash(this.password, 10);
 });
+
+//here findOneAndUpdate event is used to fire  findOneAndUpdate after
+userSchema.pre("findOneAndUpdate", async function (next) {
+  let update = { ...this.getUpdate() }; //get all passed data in body
+  if (update.password) {
+    this._update.password = await bcrypt.hash(this._update.password, 10); //here  this._update  is used to update password
+  }
+  next();
+});
+
+// userSchema.pre("findOneAndUpdate", async function (next) {
+//   console.log("===findOneAndUpdate model===");
+//   let update = { ...this.getUpdate() };
+//   console.log("update===", update);
+//   // Only run this function if password was modified
+//   if (update.password) {
+//     console.log("===update.password===");
+//     console.log("this.password===", update.password);
+//     update.password = await bcrypt.hash(this.getUpdate().password, 10);
+//     // this.password = await bcrypt.hash(this.password, 10);
+//     this._update.password = update.password;
+//     this.password = update.password;
+//     console.log("this.password===1", update.password);
+//     console.log("this.password===2", this._update.password);
+//     this.setUpdate(update);
+//     console.log("this.password===2", this.password);
+//     next();
+//   }
+//   // next();
+// });
 
 //comparing password  //NOTE:-> return Boolean
 userSchema.methods.comparePassword = async function (password) {
@@ -88,4 +123,4 @@ userSchema.set("toJSON", {
   virtuals: true,
 });
 
-module.exports = mongoose.model("user", userSchema);
+module.exports = mongoose.model("User", userSchema);
