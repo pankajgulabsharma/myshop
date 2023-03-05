@@ -3,13 +3,14 @@ const Category = require("../models/categoryModel.js");
 const mongoose = require("mongoose");
 
 //Create the Product
+//Note where is image that means we need to send file data through form-data(in Body through postman)
 exports.createProduct = async (req, res, next) => {
   try {
+    console.log("req.body==>", req.body);
     const {
       name,
       description,
       richDiscription,
-      image,
       brand,
       rating,
       numOfReviews,
@@ -19,6 +20,13 @@ exports.createProduct = async (req, res, next) => {
       category,
     } = req.body;
     let user = req.user.id; //this action is perfomed when the user is login so we get login id from there (req.user getting is through authentication)
+    let file = req.file; //this req.file is comes from selection of image means uploadOption.single("image")
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        message: "No image in the request",
+      });
+    }
     const isCategoryFound = await Category.findById(category);
     if (!isCategoryFound) {
       return res.status(404).json({
@@ -26,11 +34,14 @@ exports.createProduct = async (req, res, next) => {
         message: "Invalid category",
       });
     }
+    const basePath = `${req.protocol}://${req.get("host")}/public/uploads/`;
+    // console.log("req.file==>", req.file);
+    const fileName = req.file.filename;
     let product = await Product.create({
       name,
       description,
       richDiscription,
-      image,
+      image: `${basePath}${fileName}`, //  http://localhost:5001/public/uploads/imageName-232323.extentionname
       brand,
       rating,
       numOfReviews,
@@ -255,4 +266,53 @@ exports.getFeatured = async (req, res, next) => {
     success: true,
     product,
   });
+};
+
+//update product gallery images
+exports.productGalleryImages = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.productId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid Product Id ${req.params.productId} found`,
+      });
+    }
+    let files = req.files; //this req.file is comes from selection of image means uploadOption.single("image")
+    console.log("req.files==>", req.files);
+    if (!files) {
+      return res.status(404).json({
+        success: false,
+        message: "No image in the request",
+      });
+    }
+    let imagePaths = [];
+    const basePath = `${req.protocol}://${req.get("host")}/public/uploads/`;
+    if (files) {
+      files.map(
+        async (file) => await imagePaths.push(`${basePath}${file.filename}`)
+      );
+    }
+    const product = await Product.findByIdAndUpdate(
+      req.params.productId,
+      {
+        images: imagePaths,
+      },
+      { new: true }
+    );
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: `product with this id ${req.params.productId} is not present`,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

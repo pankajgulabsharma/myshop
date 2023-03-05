@@ -42,21 +42,30 @@ exports.createOrder = async (req, res, next) => {
       status,
       taxPrice,
       shippingPrice,
-      totalPrice,
       user,
     } = req.body;
 
-    let orderItemsIds = Promise.all(
+    let orderItemsIds = await Promise.all(
       // it returns[Promise<pending>,Promise<pending>] so to solve this we are using Promise.all()
       orderItems.map(async (orderItem) => {
         let newOrderItem = await OrderItems(orderItem).save();
         return newOrderItem._id;
       })
     );
+    let totalPrices = await Promise.all(
+      orderItemsIds.map(async (orderItemId) => {
+        let orderItem = await OrderItems.findById(orderItemId).populate(
+          "product",
+          "price"
+        );
+        let totalPrice = orderItem.product.price * orderItem.quantity;
+        return totalPrice;
+      })
+    );
 
-    let orderItemsIdsResolver = await orderItemsIds; //still we are getting one [Promise<pending>] so we need to wait here
+    let totalPrice = totalPrices.reduce((a, b) => a + b, 0);
     let order = new Order({
-      orderItems: orderItemsIdsResolver,
+      orderItems: orderItemsIds,
       shopingAddress1,
       shopingAddress2,
       city,
@@ -113,6 +122,122 @@ exports.getOrderById = async (req, res, next) => {
     res.status(200).json({
       success: true,
       order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//update order by id
+exports.updateOrder = async (req, res, next) => {
+  try {
+    let { status } = req.body;
+    let isStatusRight = ["Pending", "Shipped"].includes(status);
+    if (!isStatusRight) {
+      return res.status(404).json({
+        success: false,
+        message: "status is either Pending, Shipped",
+      });
+    }
+    let updatedOrder = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      {
+        status,
+      },
+      { new: true }
+    );
+    if (!updatedOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "order with this id is not present",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      updatedOrder,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//Deleting Order based on Id
+exports.deleteOrderById = async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.orderId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid Order Id ${req.params.orderId} found`,
+      });
+    }
+    await Order.findByIdAndDelete(req.params.orderId).then(async (order) => {
+      if (order) {
+        console.log("order==>", order);
+        await order.orderItems.map(async (orderItemId) => {
+          await OrderItems.findByIdAndDelete(orderItemId);
+        });
+        return res.status(200).json({
+          success: true,
+          message: `order id ${req.params.orderId} is deleted successfully`,
+        });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "order with this id is not present",
+        });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//Get totalsales
+exports.getTotalSales = async (req, res, next) => {
+  try {
+    const totalSales = await Order.aggregate([
+      { $group: { _id: null, totalsales: { $sum: "$totalPrice" } } },
+    ]);
+    if (!totalSales) {
+      return res.status(404).json({
+        success: false,
+        message: `The order can not be generated`,
+      });
+    }
+    res.status(200).json({
+      success: true,
+      totalSales,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+//Get order count
+exports.getOrderCount = async (req, res, next) => {
+  try {
+    const orderCount = await Order.find({}).countDocuments();
+    if (!orderCount) {
+      res.json({
+        success: false,
+        message: "Not a single Order available",
+      });
+    }
+    res.json({
+      success: true,
+      orderCount,
     });
   } catch (error) {
     res.status(500).json({

@@ -37,7 +37,12 @@ const orderSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    defaul: "Processing",
+    enum: {
+      values: ["Pending", "Shipped"],
+      message: "status is either Pending,Shipped",
+    },
+    trim: true,
+    defaul: "Pending",
   },
   taxPrice: {
     type: Number,

@@ -34,6 +34,12 @@ const userSchema = new mongoose.Schema({
     required: [true, "Phone number is required"],
     maxLength: [10, "Phone number cannot be more than 10 characters"],
     minLength: [10, "Phone name should have 10 characters"],
+    validate: {
+      validator: function (v) {
+        return /\d{3}\d{3}\d{4}/.test(v);
+      },
+      message: (props) => `${props.value} is not a valid phone number!`,
+    },
   },
   street: {
     type: String,
@@ -57,6 +63,11 @@ const userSchema = new mongoose.Schema({
   // },
   role: {
     type: String,
+    enum: {
+      values: ["user", "admin"],
+      message: "role is either user,admin",
+    },
+    trim: true,
     default: "user",
   },
   createdAt: {
